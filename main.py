@@ -1,11 +1,14 @@
 import uvicorn
 from fastapi import FastAPI
 
+from app.api.endpoints import router
+
 app = FastAPI(
     title="Wikipedia Research Agent",
-    description="An ai agent which searches Wikepdia and returns text summaries",
+    description="An ai agent which searches Wikipedia and returns summaries",
     version="1.0.0"
 )
+app.include_router(router)
 
 
 # Root Endpoint
