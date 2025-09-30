@@ -21,20 +21,22 @@ class ResearchAgent:
             Dictionary with title and full content.
         """
         try:
-            page = wikipedia.page(title, auto_suggest=False)
+            page = wikipedia.page(title)
             return {
-                "title": title,
+                "title": page.title,
                 "content": page.content,
                 "url": page.url,
                 "word_count": len(page.content.split())
             }
         except wikipedia.exceptions.DisambiguationError as e:
             # If ambiguous, try first option
+            print(f"⚠️ Disambiguation for '{title}', trying: {e.options[0]}")
             return self.get_full_article_content(e.options[0])
         except wikipedia.exceptions.PageError:
+            print(f"⚠️ Page not found: '{title}'")
             return None
         except Exception as e:
-            print(f"Error getting article {title}: {e}")
+            print(f"⚠️ Error getting article '{title}': {e}")
             return None
 
     def conduct_research(self, user_query: str, num_searches: int = 3) -> Dict:
@@ -69,7 +71,7 @@ class ResearchAgent:
 
             for title in titles:
                 summary = self.wiki.get_page_summary(title, sentences=3)
-                if summary and not summary.startswith("Error") and not summary.startswith("No Summary"):
+                if summary:
                     candidate_articles.append({
                         "title": title,
                         "summary": summary,
@@ -99,11 +101,20 @@ class ResearchAgent:
 
         print(f"\n✅ Research complete! {len(final_articles)} articles ready for synthesis")
 
+        # After Step 4, add Step 5:
+        print("\n✍️ Step 5: Synthesizing research document with Claude...")
+        research_document = self.claude.synthesize_research(
+            user_query=user_query,
+            articles=final_articles
+        )
+        print("✅ Document synthesis complete!")
+
         return {
             "user_query": user_query,
             "search_queries": search_queries,
             "articles": final_articles,
             "total_articles": len(final_articles),
             "total_words": sum(a['word_count'] for a in final_articles),
-            "candidates_considered": len(candidate_articles)
+            "candidates_considered": len(candidate_articles),
+            "research_document": research_document
         }

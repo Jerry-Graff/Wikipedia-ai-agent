@@ -30,9 +30,13 @@ class WikipediaService:
         try:
             return wikipedia.summary(title, sentences=sentences)
         except wikipedia.exceptions.DisambiguationError as e:
-            # Return summary of first option
-            return wikipedia.summary(e.options[0], sentences=sentences)
+            # For disambiguation pages, try the first option
+            try:
+                return wikipedia.summary(e.options[0], sentences=sentences)
+            except:
+                return None
         except wikipedia.exceptions.PageError:
-            return f"No summary available for {title}"
-        except Exception:
-            return f"Error getting summary for {title}"
+            return None
+        except Exception as e:
+            print(f"Summary error for '{title}': {e}")
+            return None

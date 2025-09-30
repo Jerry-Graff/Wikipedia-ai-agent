@@ -28,16 +28,29 @@ class ClaudeService:
             List of search query strings
         """
 
-        prompt = f""" Given a user question: "{user_query}".
-                    Generate {num_queries} specific Wikipedia search queries that would help answer this question.
-                    Be dynamic and creative in your approach, try to think outside of the box whilst providing a grounded clear understanding of the root topic.
-                 """
+        prompt = f"""Given this research question: "{user_query}"
+                    Generate {num_queries} Wikipedia search terms that will find relevant articles.
+
+                    CRITICAL: Return ONLY the search terms, nothing else.
+                    - No numbering
+                    - No explanations
+                    - No formatting like ** or quotes
+                    - Just the plain search terms, one per line
+
+                    Example:
+                    If asked about "potato famine in 1847"
+                    You return:
+                    Great Famine Ireland
+                    Irish Potato Famine 1847
+                    Black 47 famine
+
+                    Your search terms:"""
 
         try:
             message = self.client.messages.create(
                 model=self.model,
-                max_tokens=5000,
-                temperature=0.4,
+                max_tokens=200,
+                temperature=0.2,
                 messages=[
                     {"role": "user",
                      "content": prompt}
@@ -46,10 +59,14 @@ class ClaudeService:
             )
 
             response_text = message.content[0].text
-            queries = [q.strip() for q in response_text.strip().split('\n') if q.strip()]
+            queries = []
+            for line in response_text.strip().split('\n'):
+                cleaned = line.strip().lstrip('0123456789.-*# ').strip('"\'*')
+                if cleaned and len(cleaned) > 2:
+                    queries.append(cleaned)
 
             print(f"Generated queries: {queries}")
-            return queries
+            return queries[:num_queries]
 
         except Exception as e:
             raise Exception(f"Failed to generate search queries: {str(e)}")
@@ -105,3 +122,41 @@ class ClaudeService:
             print(f"Filtering failed, using all articles: {e}")
             # Fallback: return first 5
             return [a['title'] for a in candidate_articles[:5]]
+
+    def synthesize_research(self, user_query: str, articles: list) -> str:
+
+        articles_content = ""
+        for article in articles[:5]:
+            content_preview = ' '.join(article['content'].split()[:2000])
+            articles_content += f"\n\n=== {article['title']} ===\nSource: {article['url']}\n\n{content_preview}\n"
+
+        prompt = f"""Research Question: "{user_query}"
+                    I've gathered the following Wikipedia articles. Please synthesize this information into a comprehensive research document.
+
+                    {articles_content}
+
+                    Write a well-structured research document that:
+                    1. Directly answers the user's question
+                    2. Synthesizes information from multiple sources
+                    3. Includes specific facts, dates, and details
+                    4. Cites which article information came from
+                    5. Is organized with clear sections
+
+                    Format as a readable document, not bullet points."""
+
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=4000,
+                temperature=0.5,
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }],
+                system="You are an expert research writer who creates clear, comprehensive documents."
+            )
+
+            return message.content[0].text
+
+        except Exception as e:
+            raise Exception(f"Failed to synthesize research: {str(e)}")

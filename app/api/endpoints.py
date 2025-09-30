@@ -65,6 +65,7 @@ class ResearchResponse(BaseModel):
     total_words: int
     candidates_considered: int
     articles: List[ArticleData]
+    research_document: str = Field(..., description="AI-synthesized research document")
 
 
 # Initalize Services
@@ -157,7 +158,8 @@ async def conduct_ai_research(request: ResearchRequest):
             total_articles=results['total_articles'],
             total_words=results['total_words'],
             candidates_considered=results['candidates_considered'],
-            articles=articles_formatted
+            articles=articles_formatted,
+            research_document=results['research_document']
         )
 
     except Exception as e:
