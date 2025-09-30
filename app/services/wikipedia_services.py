@@ -20,6 +20,7 @@ class WikipediaService:
         try:
             results = wikipedia.search(query, results=max_results)
             print(f"Found {len(results)} results: {results}")
+
             return results
         except Exception as e:
             raise Exception(f"Wikipedia search failed: {str(e)}")

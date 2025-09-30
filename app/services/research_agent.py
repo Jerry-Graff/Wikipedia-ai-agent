@@ -40,10 +40,10 @@ class ResearchAgent:
     def conduct_research(self, user_query: str, num_searches: int = 3) -> Dict:
         """
         Main research workflow:
-        1. Generate search queries with Claude
-        2. Search Wikipedia for each query
-        3. Retrieve full article content
-        4. Return all gathered information
+        1. Generate search queries
+        2. Get summaries for all results
+        3. Use Claude to pick most relevant articles
+        4. Only get full content for relevant ones
 
         Args:
             user_query: The user's research question
@@ -59,26 +59,51 @@ class ResearchAgent:
         search_queries = self.claude.generate_search_queries(user_query, num_queries=num_searches)
         print(f"Generated queries: {search_queries}")
 
-        # Step 2: Search Wikipedia
-        print("\n🔎 Step 2: Searching Wikipedia...")
-        all_articles = []
+        # Step 2: Get summaries of potential candiates
+        print("\n📝 Step 2: Getting article summaries...")
+        candidate_articles = []
 
         for query in search_queries:
             print(f"    Searching for: {query}")
-            titles = self.wiki.search_titles(query, max_results=2)
+            titles = self.wiki.search_titles(query, max_results=3)
 
             for title in titles:
-                article = self.get_full_article_content(title)
-                if article:
-                    print(f"    ✓ Retrieved: {article['title']} ({article['word_count']} words)")
-                    all_articles.append(article)
+                summary = self.wiki.get_page_summary(title, sentences=3)
+                if summary and not summary.startswith("Error") and not summary.startswith("No Summary"):
+                    candidate_articles.append({
+                        "title": title,
+                        "summary": summary,
+                        "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+                    })
+                    print(f"  ✓ {title}")
 
-        print(f"\n✅ Research complete! Gathered {len(all_articles)} articles")
+        print(f"\nFound {len(candidate_articles)} candidate articles")
+
+        # Step 3: Use Claude to filter out relevant articles
+        print("\n🤖 Step 3: Claude filtering for relevance...")
+        relevant_titles = self.claude.filter_relevant_articles(
+            user_query=user_query,
+            candidate_articles=candidate_articles
+        )
+        print(f"Claude selected {len(relevant_titles)} relevant articles.")
+
+        # Step 4: Get full content of relevant articles
+        print("\n📖 Step 4: Retrieving full content for relevant articles...")
+        final_articles = []
+
+        for title in relevant_titles:
+            article = self.get_full_article_content(title)
+            if article:
+                print(f"  ✓ Retrieved full content: {article['title']} ({article['word_count']} words)")
+                final_articles.append(article)
+
+        print(f"\n✅ Research complete! {len(final_articles)} articles ready for synthesis")
 
         return {
             "user_query": user_query,
             "search_queries": search_queries,
-            "articles": all_articles,
-            "total_articles": len(all_articles),
-            "total_words": sum(word['word_count'] for word in all_articles)
+            "articles": final_articles,
+            "total_articles": len(final_articles),
+            "total_words": sum(a['word_count'] for a in final_articles),
+            "candidates_considered": len(candidate_articles)
         }
