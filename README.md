@@ -284,7 +284,7 @@ Contributions welcome! Areas needing work:
 
 ## License
 
-[Your License Here]
+MIT
 
 ## Acknowledgments
 
