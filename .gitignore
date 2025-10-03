@@ -23,5 +23,4 @@ env/
 Thumbs.db
 
 # Output files
-output/
-research_results/
+Research_output/

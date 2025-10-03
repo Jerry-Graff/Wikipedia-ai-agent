@@ -1,5 +1,6 @@
 from app.services.claude_services import ClaudeService
 from app.services.wikipedia_services import WikipediaService
+from app.services.file_services import FileService
 from typing import Dict
 import wikipedia
 
@@ -9,6 +10,7 @@ class ResearchAgent:
         """Initalize agent with Claude and Wiki services."""
         self.claude = ClaudeService()
         self.wiki = WikipediaService()
+        self.file_service = FileService()
 
     def get_full_article_content(self, title: str) -> Dict[str, str]:
         """
@@ -101,13 +103,27 @@ class ResearchAgent:
 
         print(f"\n✅ Research complete! {len(final_articles)} articles ready for synthesis")
 
-        # After Step 4, add Step 5:
+        # Step 5: Synthesize data as API output
         print("\n✍️ Step 5: Synthesizing research document with Claude...")
         research_document = self.claude.synthesize_research(
             user_query=user_query,
             articles=final_articles
         )
         print("✅ Document synthesis complete!")
+
+        #Step 6: Data processing and save to file
+        print("\n💾 Step 6: Saving research document...")
+        file_path = self.file_service.save_research_document(
+            query=user_query,
+            document=research_document,
+            metadata={
+                'search_queries': search_queries,
+                'total_articles': len(final_articles),
+                'total_words': sum(x['word_count'] for x in final_articles),
+                'candidates_considered': len(candidate_articles),
+                'articles': final_articles
+            }
+        )
 
         return {
             "user_query": user_query,
@@ -116,5 +132,7 @@ class ResearchAgent:
             "total_articles": len(final_articles),
             "total_words": sum(a['word_count'] for a in final_articles),
             "candidates_considered": len(candidate_articles),
-            "research_document": research_document
+            "research_document": research_document,
+            "saved_file_path": file_path
         }
+

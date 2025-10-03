@@ -41,7 +41,7 @@ class WikipediaSearcResponse(BaseModel):
 
 # Response Models /research - claude api
 class ResearchRequest(BaseModel):
-    query: str = Field(..., min_length=5, max_length=200, description="Research Questions")
+    query: str = Field(..., min_length=5, max_length=500, description="Research Questions")
     num_searches: int = Field(default=3, ge=1, le=5, description="Number of Wiki searches: 1-5")
 
     @field_validator('query')
@@ -66,12 +66,14 @@ class ResearchResponse(BaseModel):
     candidates_considered: int
     articles: List[ArticleData]
     research_document: str = Field(..., description="AI-synthesized research document")
+    saved_file_path: str = Field(..., description="Local file path where document was saved")
 
 
 # Initalize Services
 router = APIRouter()
 wiki_service = WikipediaService()
 research_agent = ResearchAgent()
+
 
 @router.get("/search/{query}", response_model=WikipediaSearcResponse)
 async def search_wikipedia(query: str):
@@ -159,7 +161,8 @@ async def conduct_ai_research(request: ResearchRequest):
             total_words=results['total_words'],
             candidates_considered=results['candidates_considered'],
             articles=articles_formatted,
-            research_document=results['research_document']
+            research_document=results['research_document'],
+            saved_file_path=results['saved_file_path']
         )
 
     except Exception as e:
